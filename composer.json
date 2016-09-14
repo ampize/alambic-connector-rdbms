@@ -1,0 +1,20 @@
+{
+    "name": "dfanchon/alambic-connector-rdbms",
+    "description": "Alambic connector for RDMS",
+    "keywords": ["alambic","connector", "rdbms"],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+      {
+        "name": "WebTales"
+      }
+    ],
+    "require": {
+        "doctrine/dbal": "v2.5.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "AlambicRDBMSConnector\\": "src/AlambicRDBMSConnector/"
+        }
+    }
+}
