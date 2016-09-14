@@ -1,5 +1,5 @@
 {
-    "name": "dfanchon/alambic-connector-rdbms",
+    "name": "webtales/alambic-connector-rdbms",
     "description": "Alambic connector for RDMS",
     "keywords": ["alambic","connector", "rdbms"],
     "type": "library",
