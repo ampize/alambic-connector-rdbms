@@ -1,5 +1,5 @@
 {
-    "name": "webtales/alambic-connector-rdbms",
+    "name": "ampize/alambic-connector-rdbms",
     "description": "Alambic connector for RDMS",
     "keywords": ["alambic","connector", "rdbms"],
     "type": "library",
