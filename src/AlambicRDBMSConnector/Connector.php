@@ -2,52 +2,53 @@
 
 namespace AlambicRDBMSConnector;
 
-use \Exception;
-
-class Connector
+class Connector extends \Alambic\Connector\AbstractConnector
 {
-    public function __invoke($payload=[])
+    protected $client;
+    protected $requiredConfig = [
+        'db' => 'Database name is required',
+        'user' => 'Database user is required',
+        'password' => 'Password is required',
+        'host' => 'Host is required',
+        'driver' => 'Driver is required',
+        'port' => 'Port is required',
+        'table' => 'Table name is required',
+    ];
+    protected $limit = 15;
+    protected $orderByDirection = 'DESC';
+
+    public function __invoke($payload = [])
     {
         if (isset($payload['response'])) {
             return $payload;
         }
 
-        $configs=isset($payload["configs"]) ? $payload["configs"] : [];
-
-        $baseConfig=isset($payload["connectorBaseConfig"]) ? $payload["connectorBaseConfig"] : [];
-
-        if (empty($baseConfig["databaseUrl"])) {
-            throw new Exception('Database url is required');
-        }
-
-        if (empty($configs["table"])) {
-            throw new Exception('Table is required');
-        }
-
-        $config = new \Doctrine\DBAL\Configuration();
+        $this->setPayload($payload);
+        $this->checkConfig();
 
         $connectionParams = array(
-            'url' => $baseConfig["databaseUrl"]
+            'dbname' => $this->config['db'],
+            'user' => $this->config['user'],
+            'password' => $this->config['password'],
+            'host' => $this->config['host'],
+            'driver' => $this->config['driver'],
+            'port' => $this->config['port'],
         );
-        $client = \Doctrine\DBAL\DriverManager::getConnection($connectionParams, $config);
+        $this->client = Connection::getInstance($connectionParams)->getConnection();
 
-        return $payload["isMutation"] ? $this->execute($payload, $client) : $this->resolve($payload, $client, $configs);
+        return $payload['isMutation'] ? $this->execute() : $this->resolve();
     }
 
-    public function resolve($payload=[],$client,$configs){
+    private function resolve()
+    {
+        $queryBuilder = $this->client->createQueryBuilder();
 
-        $args=isset($payload["args"]) ? $payload["args"] : [];
-
-        $multivalued=isset($payload["multivalued"]) ? $payload["multivalued"] : false;
-
-        $queryBuilder = $client->createQueryBuilder();
-
-        $queryBuilder->from($configs["table"]);
+        $queryBuilder->from($this->config['table']);
 
         $fields = [];
         if (!empty($payload['pipelineParams']['argsDefinition'])) {
             // only query scalar types
-            foreach($payload['pipelineParams']['argsDefinition'] as $key => $value) {
+            foreach ($payload['pipelineParams']['argsDefinition'] as $key => $value) {
                 if (in_array($value['type'], ['Int', 'Float', 'Boolean', 'String', 'ID'])) {
                     $fields[] = $key;
                 } else {
@@ -58,13 +59,13 @@ class Connector
         if (empty($fields)) {
             $fieldList = '*';
         } else {
-            $fieldList = implode(',',$fields);
+            $fieldList = implode(',', $fields);
         }
 
         $queryBuilder->select($fieldList);
 
-        foreach ($payload['args'] as $key => $value) {
-            $type = isset($payload['pipelineParams']['argsDefinition'][$key]['type']) ? $payload['pipelineParams']['argsDefinition'][$key]['type'] : 'unknown';
+        foreach ($this->args as $key => $value) {
+            $type = isset($this->argsDefinition[$key]['type']) ? $this->argsDefinition[$key]['type'] : 'unknown';
             switch ($type) {
                 case 'Int':
                 case 'Float':
@@ -79,29 +80,28 @@ class Connector
             }
         }
 
-        if (!empty($payload['pipelineParams']['start'])) $queryBuilder->setFirstResult($payload['pipelineParams']['start']);
-
-        if (!empty($payload['pipelineParams']['limit'])) $queryBuilder->setMaxResults($payload['pipelineParams']['limit']);
-
-        if (!empty($payload['pipelineParams']['orderBy'])) {
-            $orderByDirection = !empty($payload['pipelineParams']['orderByDirection']) ? $payload['pipelineParams']['orderByDirection'] : 'DESC';
-            $queryBuilder->orderBy($payload['pipelineParams']['orderBy'], $orderByDirection);
+        if ($this->multivalued) {
+            $queryBuilder->setFirstResult($this->start);
+            $queryBuilder->setMaxResults($this->limit);
+            if (!empty($this->orderBy)) {
+                $queryBuilder->orderBy($this->orderBy, $this->orderByDirection);
+            }
         }
 
         $sql = $queryBuilder->getSQL();
-        $results = $client->query($sql)->fetchAll();
+        $results = $this->client->query($sql)->fetchAll();
 
-        if ($multivalued) {
-            $payload["response"] = (!empty($results)) ? $results : null;
+        if ($this->multivalued) {
+            $payload['response'] = (!empty($results)) ? $results : null;
         } else {
-            $payload["response"] = (!empty($results)) ? $results[0] : null;
+            $payload['response'] = (!empty($results)) ? $results[0] : null;
         }
 
         return $payload;
     }
 
-    public function execute($payload=[],$diffbot){
-        throw new Exception('WIP');
+    private function execute($payload = [])
+    {
+        throw new ConnectorInternal('WIP');
     }
-
 }
