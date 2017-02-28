@@ -49,7 +49,7 @@ class Connector extends \Alambic\Connector\AbstractConnector
         if (!empty($payload['pipelineParams']['argsDefinition'])) {
             // only query scalar types
             foreach ($payload['pipelineParams']['argsDefinition'] as $key => $value) {
-                if (in_array($value['type'], ['Int', 'Float', 'Boolean', 'String', 'ID'])) {
+                if (in_array($value['type'], ['Int', 'Float', 'Boolean', 'String', 'ID', 'Date'])) {
                     $fields[] = $key;
                 } else {
                     $fields[] = reset($value['relation']);
@@ -71,6 +71,11 @@ class Connector extends \Alambic\Connector\AbstractConnector
                 case 'Float':
                 case 'Boolean':
                     $queryBuilder->andWhere("$key=$value");
+                    break;
+                case 'Date':
+                    $filterDate = new \DateTime($value);
+                    $queryBuilder->andWhere("$key=:filterDate");
+                    $queryBuilder->setParameter('filterDate', $filterDate);
                     break;
                 case 'String':
                 case 'ID':
