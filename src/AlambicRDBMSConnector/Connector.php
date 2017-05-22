@@ -16,6 +16,15 @@ class Connector extends \Alambic\Connector\AbstractConnector
     ];
     protected $limit = 15;
     protected $orderByDirection = 'DESC';
+    protected $implementedOperators=[
+        "eq"=>"=",
+        "neq"=>"<>",
+        "lt"=>"<",
+        "lte"=>"<=",
+        "gt"=>">",
+        "gte"=>">=",
+        "like"=>"LIKE",
+    ];
 
     public function __invoke($payload = [])
     {
@@ -86,6 +95,20 @@ class Connector extends \Alambic\Connector\AbstractConnector
         }
 
         if ($this->multivalued) {
+            if($this->filters) {
+                if (!empty($this->filters["scalarFilters"])) {
+                    foreach ($this->filters["scalarFilters"] as $scalarFilter) {
+                        if (isset($this->implementedOperators[$scalarFilter["operator"]])) {
+                            if($scalarFilter["operator"]=='like'){
+                                $queryBuilder->andWhere($scalarFilter["field"].' '.$this->implementedOperators[$scalarFilter["operator"]].' "%'.$scalarFilter["value"].'%"');
+
+                            } else {
+                                $queryBuilder->andWhere($scalarFilter["field"].' '.$this->implementedOperators[$scalarFilter["operator"]].' '.$this->getValueForType($scalarFilter["field"],$scalarFilter["value"]));
+                            }
+                        }
+                    }
+                }
+            }
             $queryBuilder->setFirstResult($this->start);
             $queryBuilder->setMaxResults($this->limit);
             if (!empty($this->orderBy)) {
@@ -108,5 +131,25 @@ class Connector extends \Alambic\Connector\AbstractConnector
     private function execute($payload = [])
     {
         throw new ConnectorInternal('WIP');
+    }
+
+    protected function getValueForType($field,$value){
+        $type = isset($this->argsDefinition[$field]['type']) ? $this->argsDefinition[$field]['type'] : 'unknown';
+        switch ($type) {
+            case 'Int':
+            case 'Float':
+            case 'Boolean':
+                return $value;
+                break;
+            case 'Date':
+                return new \DateTime($value);
+                break;
+            case 'String':
+            case 'ID':
+            case 'unknown':
+            default:
+                return"\"$value\"";
+                break;
+        }
     }
 }
