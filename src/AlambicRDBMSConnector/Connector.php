@@ -2,6 +2,8 @@
 
 namespace AlambicRDBMSConnector;
 
+use Alambic\Exception\ConnectorInternal;
+
 class Connector extends \Alambic\Connector\AbstractConnector
 {
     protected $client;
@@ -25,6 +27,10 @@ class Connector extends \Alambic\Connector\AbstractConnector
         "gte"=>">=",
         "like"=>"LIKE",
         "notLike"=>"NOT LIKE",
+        "between"=>"BETWEEN",
+        "notBetween"=>"NOT BETWEEN",
+        "in"=>"IN",
+        "notIn"=>"NOT IN",
     ];
 
     public function __invoke($payload = [])
@@ -108,6 +114,39 @@ class Connector extends \Alambic\Connector\AbstractConnector
                         }
                     }
                 }
+                if(!empty($this->filters["betweenFilters"])){
+                    foreach($this->filters["betweenFilters"] as $betweenFilter){
+                        if($betweenFilter["operator"]=='between'){
+                            if(isset($this->filters["operator"])&&$this->filters["operator"]=="or"){
+                                $queryBuilder->orWhere($betweenFilter["field"].' '.$this->implementedOperators[$betweenFilter["operator"]].' '.$this->getValueForType($betweenFilter["field"],$betweenFilter["min"],$betweenFilter["operator"]).' AND '.$this->getValueForType($betweenFilter["field"],$betweenFilter["max"],$betweenFilter["operator"]));
+                            } else {
+                                $queryBuilder->andWhere($betweenFilter["field"].' '.$this->implementedOperators[$betweenFilter["operator"]].' '.$this->getValueForType($betweenFilter["field"],$betweenFilter["min"],$betweenFilter["operator"]).' AND '.$this->getValueForType($betweenFilter["field"],$betweenFilter["max"],$betweenFilter["operator"]));
+                            }
+                        }
+                    }
+                }
+                if (!empty($this->filters["arrayFilters"])) {
+                    foreach ($this->filters["arrayFilters"] as $arrayFilter) {
+                        if (isset($this->implementedOperators[$arrayFilter["operator"]])&&!empty($arrayFilter["value"])) {
+                            $refinedValue='(';
+                            $hasFirst=false;
+                            foreach($arrayFilter["value"] as $value){
+                                if($hasFirst){
+                                    $refinedValue=$refinedValue.', ';
+                                } else {
+                                    $hasFirst=true;
+                                }
+                                $refinedValue=$refinedValue.$this->getValueForType($arrayFilter["field"],$value,$arrayFilter["operator"]);
+                            }
+                            $refinedValue=$refinedValue.')';
+                            if(isset($this->filters["operator"])&&$this->filters["operator"]=="or"){
+                                $queryBuilder->orWhere($arrayFilter["field"].' '.$this->implementedOperators[$arrayFilter["operator"]].' '.$refinedValue);
+                            } else {
+                                $queryBuilder->andWhere($arrayFilter["field"].' '.$this->implementedOperators[$arrayFilter["operator"]].' '.$refinedValue);
+                            }
+                        }
+                    }
+                }
             }
             $queryBuilder->setFirstResult($this->start);
             $queryBuilder->setMaxResults($this->limit);
@@ -133,7 +172,7 @@ class Connector extends \Alambic\Connector\AbstractConnector
         throw new ConnectorInternal('WIP');
     }
 
-    protected function getValueForType($field,$value,$operator){
+    protected function getValueForType($field,$value,$operator=null){
         $type = isset($this->argsDefinition[$field]['type']) ? $this->argsDefinition[$field]['type'] : 'unknown';
         switch ($type) {
             case 'Int':
@@ -148,7 +187,7 @@ class Connector extends \Alambic\Connector\AbstractConnector
             case 'ID':
             case 'unknown':
             default:
-                return isset($operator)&&($operator=='like'||$operator=='notLike') ? "\"%$value%\"" : "\"$value\"" ;
+                return $operator&&($operator=='like'||$operator=='notLike') ? "\"%$value%\"" : "\"$value\"" ;
                 break;
         }
     }
