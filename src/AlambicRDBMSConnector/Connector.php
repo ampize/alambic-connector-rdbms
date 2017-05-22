@@ -24,6 +24,7 @@ class Connector extends \Alambic\Connector\AbstractConnector
         "gt"=>">",
         "gte"=>">=",
         "like"=>"LIKE",
+        "notLike"=>"NOT LIKE",
     ];
 
     public function __invoke($payload = [])
@@ -99,11 +100,10 @@ class Connector extends \Alambic\Connector\AbstractConnector
                 if (!empty($this->filters["scalarFilters"])) {
                     foreach ($this->filters["scalarFilters"] as $scalarFilter) {
                         if (isset($this->implementedOperators[$scalarFilter["operator"]])) {
-                            if($scalarFilter["operator"]=='like'){
-                                $queryBuilder->andWhere($scalarFilter["field"].' '.$this->implementedOperators[$scalarFilter["operator"]].' "%'.$scalarFilter["value"].'%"');
-
+                            if(isset($this->filters["operator"])&&$this->filters["operator"]=="or"){
+                                $queryBuilder->orWhere($scalarFilter["field"].' '.$this->implementedOperators[$scalarFilter["operator"]].' '.$this->getValueForType($scalarFilter["field"],$scalarFilter["value"],$scalarFilter["operator"]));
                             } else {
-                                $queryBuilder->andWhere($scalarFilter["field"].' '.$this->implementedOperators[$scalarFilter["operator"]].' '.$this->getValueForType($scalarFilter["field"],$scalarFilter["value"]));
+                                $queryBuilder->andWhere($scalarFilter["field"].' '.$this->implementedOperators[$scalarFilter["operator"]].' '.$this->getValueForType($scalarFilter["field"],$scalarFilter["value"],$scalarFilter["operator"]));
                             }
                         }
                     }
@@ -133,7 +133,7 @@ class Connector extends \Alambic\Connector\AbstractConnector
         throw new ConnectorInternal('WIP');
     }
 
-    protected function getValueForType($field,$value){
+    protected function getValueForType($field,$value,$operator){
         $type = isset($this->argsDefinition[$field]['type']) ? $this->argsDefinition[$field]['type'] : 'unknown';
         switch ($type) {
             case 'Int':
@@ -148,7 +148,7 @@ class Connector extends \Alambic\Connector\AbstractConnector
             case 'ID':
             case 'unknown':
             default:
-                return"\"$value\"";
+                return isset($operator)&&($operator=='like'||$operator=='notLike') ? "\"%$value%\"" : "\"$value\"" ;
                 break;
         }
     }
