@@ -52,10 +52,10 @@ class Connector extends \Alambic\Connector\AbstractConnector
         );
         $this->client = Connection::getInstance($connectionParams)->getConnection();
 
-        return $payload['isMutation'] ? $this->execute() : $this->resolve();
+        return $payload['isMutation'] ? $this->execute($payload) : $this->resolve($payload);
     }
 
-    private function resolve()
+    private function resolve($payload)
     {
         $queryBuilder = $this->client->createQueryBuilder();
 
