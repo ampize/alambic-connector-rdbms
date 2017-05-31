@@ -61,24 +61,7 @@ class Connector extends \Alambic\Connector\AbstractConnector
 
         $queryBuilder->from($this->config['table']);
 
-        $fields = [];
-        if (!empty($payload['pipelineParams']['argsDefinition'])) {
-            // only query scalar types
-            foreach ($payload['pipelineParams']['argsDefinition'] as $key => $value) {
-                if (in_array($value['type'], ['Int', 'Float', 'Boolean', 'String', 'ID', 'Date'])) {
-                    $fields[] = $key;
-                } else {
-                    $fields[] = reset($value['relation']);
-                }
-            }
-        }
-        if (empty($fields)) {
-            $fieldList = '*';
-        } else {
-            $fieldList = implode(',', $fields);
-        }
-
-        $queryBuilder->select($fieldList);
+        $queryBuilder->select('*');
 
         foreach ($this->args as $key => $value) {
             $type = isset($this->argsDefinition[$key]['type']) ? $this->argsDefinition[$key]['type'] : 'unknown';
