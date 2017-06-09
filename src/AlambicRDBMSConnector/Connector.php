@@ -138,8 +138,11 @@ class Connector extends \Alambic\Connector\AbstractConnector
             }
             $queryBuilder->setFirstResult($this->start);
             $queryBuilder->setMaxResults($this->limit);
-            if (!empty($this->orderBy)) {
+            if (!empty($this->orderBy)){
                 $queryBuilder->orderBy($this->orderBy, $this->orderByDirection);
+            }
+            if(!empty($this->groupBy)){
+                $queryBuilder->groupBy($this->groupBy);
             }
         }
 
