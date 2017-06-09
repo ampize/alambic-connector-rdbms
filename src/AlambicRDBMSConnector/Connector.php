@@ -20,7 +20,7 @@ class Connector extends \Alambic\Connector\AbstractConnector
     protected $orderByDirection = 'DESC';
     protected $implementedOperators=[
         "eq"=>"=",
-        "neq"=>"<>",
+        "ne"=>"<>",
         "lt"=>"<",
         "lte"=>"<=",
         "gt"=>">",
@@ -87,12 +87,17 @@ class Connector extends \Alambic\Connector\AbstractConnector
         if ($this->multivalued) {
             if($this->filters) {
                 if (!empty($this->filters["scalarFilters"])) {
+
                     foreach ($this->filters["scalarFilters"] as $scalarFilter) {
                         if (isset($this->implementedOperators[$scalarFilter["operator"]])) {
+                            $expression=$scalarFilter["field"].' '.$this->implementedOperators[$scalarFilter["operator"]].' '.$this->getValueForType($scalarFilter["field"],$scalarFilter["value"],$scalarFilter["operator"]);
+                            if($scalarFilter["value"]===null&&($scalarFilter["operator"]=='ne'||$scalarFilter["operator"]=='eq')) {
+                                $expression= $scalarFilter["operator"]=='ne' ? $scalarFilter["field"].' IS NOT NULL' : $scalarFilter["field"].' IS NULL';
+                            }
                             if(isset($this->filters["operator"])&&$this->filters["operator"]=="or"){
-                                $queryBuilder->orWhere($scalarFilter["field"].' '.$this->implementedOperators[$scalarFilter["operator"]].' '.$this->getValueForType($scalarFilter["field"],$scalarFilter["value"],$scalarFilter["operator"]));
+                                $queryBuilder->orWhere($expression);
                             } else {
-                                $queryBuilder->andWhere($scalarFilter["field"].' '.$this->implementedOperators[$scalarFilter["operator"]].' '.$this->getValueForType($scalarFilter["field"],$scalarFilter["value"],$scalarFilter["operator"]));
+                                $queryBuilder->andWhere($expression);
                             }
                         }
                     }
