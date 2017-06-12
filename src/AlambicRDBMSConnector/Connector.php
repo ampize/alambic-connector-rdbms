@@ -61,7 +61,11 @@ class Connector extends \Alambic\Connector\AbstractConnector
 
         $queryBuilder->from($this->config['table']);
 
-        $queryBuilder->select('*');
+        $selectString='*';
+        if(!empty($this->groupBy)){
+            $selectString=implode(',', $this->groupBy);
+        }
+        $queryBuilder->select($selectString);
 
         foreach ($this->args as $key => $value) {
             $type = isset($this->argsDefinition[$key]['type']) ? $this->argsDefinition[$key]['type'] : 'unknown';
