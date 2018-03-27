@@ -3,10 +3,16 @@
 namespace AlambicRDBMSConnector;
 
 use Alambic\Exception\ConnectorInternal;
+use Alambic\Exception\ConnectorArgs;
+use Alambic\Exception\ConnectorConfig;
+use Alambic\Exception\ConnectorUsage;
+use \Exception;
+
 
 class Connector extends \Alambic\Connector\AbstractConnector
 {
     protected $client;
+    protected $idField="id";
     protected $requiredConfig = [
         'db' => 'Database name is required',
         'user' => 'Database user is required',
@@ -41,7 +47,7 @@ class Connector extends \Alambic\Connector\AbstractConnector
 
         $this->setPayload($payload);
         $this->checkConfig();
-
+        $this->idField=!empty($this->config["idField"]) ? $this->idField=$this->config["idField"] : "id";
         $connectionParams = array(
             'dbname' => $this->config['db'],
             'user' => $this->config['user'],
@@ -164,7 +170,58 @@ class Connector extends \Alambic\Connector\AbstractConnector
 
     private function execute($payload = [])
     {
-        throw new ConnectorInternal('WIP');
+        if(empty($this->methodName)){
+            throw new ConnectorConfig('This connector requires a valid methodName for write ops');
+        }
+        if(empty($this->args[$this->idField])){
+            throw new ConnectorArgs('This connector requires id for operations other than create');
+        }
+        $argsList = $this->args;
+        if($this->methodName!='create'){
+            unset($argsList[$this->idField]);
+        }
+        foreach ($argsList as $key=>$value){
+            $type = isset($this->argsDefinition[$key]['type']) ? $this->argsDefinition[$key]['type'] : 'unknown';
+            if($type=="Date"){
+                $argsList[$key]=new \DateTime($value);
+            }
+        }
+
+        switch ($this->methodName) {
+            case 'create':
+                try {
+                    $this->client->insert($this->config['table'],$argsList);
+                    $result=$this->client->fetchAssoc('SELECT * FROM '.$this->config['table'].' WHERE '.$this->idField.' = ?', array($this->args[$this->idField]));
+                } catch (Exception $e) {
+                    $error = json_decode($e->getMessage());
+                    throw new ConnectorUsage($error->error->message);
+                }
+                break;
+            case 'update':
+                try {
+                    $this->client->update($this->config['table'],$argsList,[$this->idField=>$this->args[$this->idField]]);
+                    $result=$this->client->fetchAssoc('SELECT * FROM '.$this->config['table'].' WHERE '.$this->idField.' = ?', array($this->args[$this->idField]));
+                } catch (Exception $e) {
+                    $error = json_decode($e->getMessage());
+                    throw new ConnectorUsage($error->error->message);
+                }
+                break;
+            case 'delete':
+                try {
+                    $this->client->delete($this->config['table'],[$this->idField=>$this->args[$this->idField]]);
+                    $result=$this->args;
+                } catch (Exception $e) {
+                    $error = json_decode($e->getMessage());
+                    throw new ConnectorUsage($error->error->message);
+                }
+                break;
+            case 'bypass':
+                $result=$this->args;
+                break;
+        }
+        $this->payload['response'] = $result;
+        return $this->payload;
+
     }
 
     protected function getValueForType($field,$value,$operator=null){
