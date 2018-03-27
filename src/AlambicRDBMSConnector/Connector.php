@@ -177,7 +177,7 @@ class Connector extends \Alambic\Connector\AbstractConnector
             throw new ConnectorArgs('This connector requires id for operations other than create');
         }
         $argsList = $this->args;
-        if($this->methodName!='create'){
+        if($this->methodName=='update'){
             unset($argsList[$this->idField]);
         }
         foreach ($argsList as $key=>$value){
@@ -186,7 +186,6 @@ class Connector extends \Alambic\Connector\AbstractConnector
                 $argsList[$key]=new \DateTime($value);
             }
         }
-
         switch ($this->methodName) {
             case 'create':
                 try {
@@ -200,6 +199,21 @@ class Connector extends \Alambic\Connector\AbstractConnector
             case 'update':
                 try {
                     $this->client->update($this->config['table'],$argsList,[$this->idField=>$this->args[$this->idField]]);
+                    $result=$this->client->fetchAssoc('SELECT * FROM '.$this->config['table'].' WHERE '.$this->idField.' = ?', array($this->args[$this->idField]));
+                } catch (Exception $e) {
+                    $error = json_decode($e->getMessage());
+                    throw new ConnectorUsage($error->error->message);
+                }
+                break;
+            case 'upsert':
+                try {
+                    $existing=$this->client->fetchAssoc('SELECT * FROM '.$this->config['table'].' WHERE '.$this->idField.' = ?', array($this->args[$this->idField]));
+                    if(!empty($existing)){
+                        unset($argsList[$this->idField]);
+                        $this->client->update($this->config['table'],$argsList,[$this->idField=>$this->args[$this->idField]]);
+                    } else {
+                        $this->client->insert($this->config['table'],$argsList);
+                    }
                     $result=$this->client->fetchAssoc('SELECT * FROM '.$this->config['table'].' WHERE '.$this->idField.' = ?', array($this->args[$this->idField]));
                 } catch (Exception $e) {
                     $error = json_decode($e->getMessage());
