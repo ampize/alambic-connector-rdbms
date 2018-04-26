@@ -180,27 +180,25 @@ class Connector extends \Alambic\Connector\AbstractConnector
         if($this->methodName=='update'){
             unset($argsList[$this->idField]);
         }
+        foreach ($argsList as $key=>$value){
+            $type = isset($this->argsDefinition[$key]['type']) ? $this->argsDefinition[$key]['type'] : 'unknown';
+            if($type=="Date"){
+                $intermed=new \DateTime($value);
+                $argsList[$key]=$intermed->format('Y-m-d H:i:s');
+            }
+
+        }
         switch ($this->methodName) {
             case 'create':
-                try {
                     $this->client->insert($this->config['table'],$argsList);
                     $result=$this->client->fetchAssoc('SELECT * FROM '.$this->config['table'].' WHERE '.$this->idField.' = ?', array($this->args[$this->idField]));
-                } catch (Exception $e) {
-                    $error = json_decode($e->getMessage());
-                    throw new ConnectorUsage($error->error->message);
-                }
                 break;
             case 'update':
-                try {
                     $this->client->update($this->config['table'],$argsList,[$this->idField=>$this->args[$this->idField]]);
                     $result=$this->client->fetchAssoc('SELECT * FROM '.$this->config['table'].' WHERE '.$this->idField.' = ?', array($this->args[$this->idField]));
-                } catch (Exception $e) {
-                    $error = json_decode($e->getMessage());
-                    throw new ConnectorUsage($error->error->message);
-                }
+
                 break;
             case 'upsert':
-                try {
                     $existing=$this->client->fetchAssoc('SELECT * FROM '.$this->config['table'].' WHERE '.$this->idField.' = ?', array($this->args[$this->idField]));
                     if(!empty($existing)){
                         unset($argsList[$this->idField]);
@@ -209,19 +207,11 @@ class Connector extends \Alambic\Connector\AbstractConnector
                         $this->client->insert($this->config['table'],$argsList);
                     }
                     $result=$this->client->fetchAssoc('SELECT * FROM '.$this->config['table'].' WHERE '.$this->idField.' = ?', array($this->args[$this->idField]));
-                } catch (Exception $e) {
-                    $error = json_decode($e->getMessage());
-                    throw new ConnectorUsage($error->error->message);
-                }
+
                 break;
             case 'delete':
-                try {
                     $this->client->delete($this->config['table'],[$this->idField=>$this->args[$this->idField]]);
                     $result=$this->args;
-                } catch (Exception $e) {
-                    $error = json_decode($e->getMessage());
-                    throw new ConnectorUsage($error->error->message);
-                }
                 break;
             case 'bypass':
                 $result=$this->args;
