@@ -180,12 +180,6 @@ class Connector extends \Alambic\Connector\AbstractConnector
         if($this->methodName=='update'){
             unset($argsList[$this->idField]);
         }
-        foreach ($argsList as $key=>$value){
-            $type = isset($this->argsDefinition[$key]['type']) ? $this->argsDefinition[$key]['type'] : 'unknown';
-            if($type=="Date"){
-                $argsList[$key]=new \DateTime($value);
-            }
-        }
         switch ($this->methodName) {
             case 'create':
                 try {
