@@ -185,6 +185,8 @@ class Connector extends \Alambic\Connector\AbstractConnector
             if($type=="Date"){
                 $intermed=new \DateTime($value);
                 $argsList[$key]=$intermed->format('Y-m-d H:i:s');
+            } elseif ($type=="Boolean"&&$argsList[$key]===false){
+                $argsList[$key]=0;
             }
 
         }
