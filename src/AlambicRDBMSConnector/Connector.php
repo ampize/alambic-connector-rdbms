@@ -49,7 +49,7 @@ class Connector extends \Alambic\Connector\AbstractConnector
         $this->checkConfig();
         $this->idField=!empty($this->config["idField"]) ? $this->idField=$this->config["idField"] : "id";
         $connectionParams = array(
-            'dbname' => $this->config['db'],
+            'dbname' => isset($this->config['dbname']) ? $this->config['dbname'] : $this->config['db'],
             'user' => $this->config['user'],
             'password' => $this->config['password'],
             'host' => $this->config['host'],
