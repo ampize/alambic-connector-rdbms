@@ -10,7 +10,7 @@
       }
     ],
     "require": {
-        "doctrine/dbal": "v2.6.0"
+        "doctrine/dbal": "v2.8.*"
     },
     "autoload": {
         "psr-4": {
