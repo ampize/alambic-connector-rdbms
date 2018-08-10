@@ -158,7 +158,15 @@ class Connector extends \Alambic\Connector\AbstractConnector
 
         $sql = $queryBuilder->getSQL();
         $results = $this->client->query($sql)->fetchAll();
-
+        if(!empty($results)){
+            foreach ($results as &$result){
+                foreach ($result as &$value){
+                    if(!empty($value)&&is_string($value)&&$this->isJson($value)){
+                        $value=json_decode($value,true);
+                    }
+                }
+            }
+        }
         if ($this->multivalued) {
             $payload['response'] = (!empty($results)) ? $results : null;
         } else {
@@ -187,6 +195,8 @@ class Connector extends \Alambic\Connector\AbstractConnector
                 $argsList[$key]=$intermed->format('Y-m-d H:i:s');
             } elseif ($type=="Boolean"&&$argsList[$key]===false){
                 $argsList[$key]=0;
+            }  elseif (is_array($value)){
+                $argsList[$key]=json_encode($value);
             }
 
         }
@@ -242,5 +252,10 @@ class Connector extends \Alambic\Connector\AbstractConnector
                 return $operator&&($operator=='like'||$operator=='notLike') ? "\"%$value%\"" : "\"$value\"" ;
                 break;
         }
+    }
+
+    protected function isJson($string) {
+        json_decode($string);
+        return (json_last_error() == JSON_ERROR_NONE);
     }
 }
