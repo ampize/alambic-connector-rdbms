@@ -56,6 +56,9 @@ class Connector extends \Alambic\Connector\AbstractConnector
             'driver' => $this->config['driver'],
             'port' => $this->config['port'],
         );
+        if (isset($this->config['socket'])) {
+            $connectionParams['unix_socket'] = $this->config['socket'];
+        }
         $this->client = Connection::getInstance($connectionParams)->getConnection();
 
         return $payload['isMutation'] ? $this->execute($payload) : $this->resolve($payload);
